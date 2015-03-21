@@ -1,2 +1,2 @@
 # es_connector
-Connecteur ElasticSearch pour QGIS 2.x
+Plugin QGIS 2.x permettant d'afficher les géométries stockées dans une base ElasticSearc
