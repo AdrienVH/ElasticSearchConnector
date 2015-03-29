@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/ElasticSearchConnector" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>
