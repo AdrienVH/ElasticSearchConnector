@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>250</width>
-    <height>70</height>
+    <width>450</width>
+    <height>362</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -19,36 +19,20 @@
   <property name="windowTitle">
    <string>ElasticSearch Connector</string>
   </property>
-  <widget class="QDialogButtonBox" name="button_box">
-   <property name="geometry">
-    <rect>
-     <x>130</x>
-     <y>40</y>
-     <width>111</width>
-     <height>21</height>
-    </rect>
-   </property>
-   <property name="orientation">
-    <enum>Qt::Horizontal</enum>
-   </property>
-   <property name="standardButtons">
-    <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-   </property>
-  </widget>
   <widget class="QLineEdit" name="url">
    <property name="enabled">
     <bool>true</bool>
    </property>
    <property name="geometry">
     <rect>
-     <x>40</x>
+     <x>65</x>
      <y>10</y>
-     <width>201</width>
+     <width>194</width>
      <height>20</height>
     </rect>
    </property>
    <property name="text">
-    <string>localhost</string>
+    <string/>
    </property>
   </widget>
   <widget class="QLineEdit" name="port">
@@ -57,9 +41,9 @@
    </property>
    <property name="geometry">
     <rect>
-     <x>39</x>
+     <x>65</x>
      <y>40</y>
-     <width>41</width>
+     <width>40</width>
      <height>20</height>
     </rect>
    </property>
@@ -77,7 +61,7 @@
     </rect>
    </property>
    <property name="text">
-    <string>URL :</string>
+    <string>Serveur :</string>
    </property>
   </widget>
   <widget class="QLabel" name="label_2">
@@ -93,40 +77,88 @@
     <string>Port :</string>
    </property>
   </widget>
+  <widget class="QPushButton" name="connect">
+   <property name="geometry">
+    <rect>
+     <x>120</x>
+     <y>40</y>
+     <width>140</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Scanner la base</string>
+   </property>
+  </widget>
+  <widget class="QListView" name="layerList">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>120</y>
+     <width>430</width>
+     <height>200</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="Line" name="line">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>80</y>
+     <width>430</width>
+     <height>3</height>
+    </rect>
+   </property>
+   <property name="orientation">
+    <enum>Qt::Horizontal</enum>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_3">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>95</y>
+     <width>581</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Liste des champs (de type &quot;geo_shape&quot; ou &quot;geo_point&quot;) trouvés :</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="closeDlg">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="geometry">
+    <rect>
+     <x>370</x>
+     <y>330</y>
+     <width>71</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Fermer</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="addLayers">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="geometry">
+    <rect>
+     <x>220</x>
+     <y>330</y>
+     <width>140</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Ajouter ces couches</string>
+   </property>
+  </widget>
  </widget>
  <resources/>
- <connections>
-  <connection>
-   <sender>button_box</sender>
-   <signal>accepted()</signal>
-   <receiver>ElasticSearchConnectorDialogBase</receiver>
-   <slot>accept()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>20</x>
-     <y>20</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>20</x>
-     <y>20</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>button_box</sender>
-   <signal>rejected()</signal>
-   <receiver>ElasticSearchConnectorDialogBase</receiver>
-   <slot>reject()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>20</x>
-     <y>20</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>20</x>
-     <y>20</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>

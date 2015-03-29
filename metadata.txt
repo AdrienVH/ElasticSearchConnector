@@ -2,7 +2,7 @@
 name=ElasticSearch Connector
 qgisMinimumVersion=2.0
 description=Ce plugin permet d'afficher les géométries stockées dans une base ElasticSearch
-version=0.1
+version=0.2
 author=Adrien VAN HAMME
 email=esconnector@adrienvh.fr
 tags=

@@ -16,16 +16,16 @@ email     : adrien.van.hamme@gmail.com
 * (at your option) any later version.                                  *
 ********************************************************************/"""
 
-from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
-from PyQt4.QtGui import QAction, QIcon
-import resources_rc
+from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, QObject, SIGNAL
+from PyQt4.QtGui import QAction, QIcon, QStandardItemModel, QStandardItem
 from elasticsearch_connector_dialog import ElasticSearchConnectorDialog
+import resources_rc
 import os.path
 
-import ogr
 from qgis.core import QgsProject, QgsMapLayerRegistry, QgsVectorLayer, QgsFeature, QgsGeometry
 from qgis.gui import QgsMessageBar
 from connector import *
+import ogr
 
 class ElasticSearchConnector:
 
@@ -57,34 +57,6 @@ class ElasticSearchConnector:
 		return QCoreApplication.translate('ElasticSearchConnector', message)
 
 	def add_action(self, icon_path, text, callback, enabled_flag=True, add_to_menu=True, add_to_toolbar=True, status_tip=None, whats_this=None, parent=None):
-		"""Add a toolbar icon to the toolbar.
-		:param icon_path: Path to the icon for this action. Can be a resource
-			path (e.g. ':/plugins/foo/bar.png') or a normal file system path.
-		:type icon_path: str
-		:param text: Text that should be shown in menu items for this action.
-		:type text: str
-		:param callback: Function to be called when the action is triggered.
-		:type callback: function
-		:param enabled_flag: A flag indicating if the action should be enabled
-			by default. Defaults to True.
-		:type enabled_flag: bool
-		:param add_to_menu: Flag indicating whether the action should also
-			be added to the menu. Defaults to True.
-		:type add_to_menu: bool
-		:param add_to_toolbar: Flag indicating whether the action should also
-			be added to the toolbar. Defaults to True.
-		:type add_to_toolbar: bool
-		:param status_tip: Optional text to show in a popup when mouse pointer
-			hovers over the action.
-		:type status_tip: str
-		:param parent: Parent widget for the new action. Defaults None.
-		:type parent: QWidget
-		:param whats_this: Optional text to show in the status bar when the
-			mouse pointer hovers over the action.
-		:returns: The action that was created. Note that the action is also
-			added to self.actions list.
-		:rtype: QAction
-		"""
 		icon = QIcon(icon_path)
 		action = QAction(icon, text, parent)
 		action.triggered.connect(callback)
@@ -112,96 +84,124 @@ class ElasticSearchConnector:
 
 	def run(self):
 		self.dlg.show()
-		result = self.dlg.exec_()
-		if result:
-			try:
-				connector = EsConnector(self.dlg.url.text(), self.dlg.port.text())
-				"""
-				1. SCAN DE LA BASE ES A LA RECHERCHE DES CHAMPS DE TYPE GEO_SHAPE OU GEO_POINT
-				"""
-				# On parcourt les index
-				aliases = connector.makeGetCallToES("_aliases")
-				for index in aliases:
-					# On parcourt les types
-					metadata = connector.makeGetCallToES(index)
-					mappings = metadata[index]["mappings"]
-					for type in mappings:
-						# On parcourt les champs
-						mapping = mappings[type]["properties"]
-						for field in mapping:
-							# Si le champ est de type geo_shape ou geo_point
-							if mapping[field]["type"] == "geo_point" or mapping[field]["type"] == "geo_shape":
-								connector.addGeoField({"index": index, "type": type, "field": field, "geotype": mapping[field]["type"]})
-				"""
-				2. RECUPERATION DES DOCUMENTS POUR CHACUN DES CHAMPS TROUVES
-				"""
-				# On parcourt les champs géographiques recensés
-				for geoField in connector.getGeoFields():
-					index = geoField["index"]
-					type = geoField["type"]
-					field = geoField["field"]
-					geotype = geoField["geotype"]
-					# On préparer les tableaux
-					features = {"MultiPoint": [], "MultiLineString": [], "MultiPolygon": []}
-					# On parcourt les résultats
-					hits = connector.getHits(index, type)
-					if len(hits) > 0:
-						# Si on va récupérer des geo_point
-						if geotype == "geo_point":
-							for hit in hits:
-								try:
-									# On construit une feature et on l'ajoute au tableau
-									geoPoint = hit["_source"][field]
-									wkt = ""
-									if isinstance(geoPoint, str) or isinstance(geoPoint, unicode):
-										coordinates = geoPoint.split(",")
-										wkt = "POINT("+ coordinates[1] +" " + coordinates[0] + ")"
-									elif isinstance(geoPoint, dict):
-										wkt = "POINT("+ geoPoint["lon"] +" " + geoPoint["lat"] + ")"
-									elif isinstance(geoPoint, list):
-										wkt = "POINT("+ geoPoint[1] +" " + geoPoint[0] + ")"
-									feature = QgsFeature()
-									feature.setGeometry(QgsGeometry.fromWkt(wkt))
+		QObject.connect(self.dlg.connect, SIGNAL("clicked()"), self.onConnectClick)
+		QObject.connect(self.dlg.addLayers, SIGNAL("clicked()"), self.onAddLayersClick)
+		QObject.connect(self.dlg.closeDlg, SIGNAL("clicked()"), self.oncloseDlgClick)
+
+	def onConnectClick(self):
+		# On remplit le champ Serveur s'il était vide
+		if self.dlg.url.text() == "":
+			self.dlg.url.setText("localhost")
+		# On prépare la liste
+		listView = self.dlg.layerList
+		model = QStandardItemModel(listView)
+		try:
+			# On ouvre une connexion à la base
+			self.connector = EsConnector(self.dlg.url.text(), self.dlg.port.text())
+			# On parcourt les index
+			aliases = self.connector.makeGetCallToES("_aliases")
+			for index in aliases:
+				# On parcourt les types
+				metadata = self.connector.makeGetCallToES(index)
+				mappings = metadata[index]["mappings"]
+				for type in mappings:
+					# On parcourt les champs
+					mapping = mappings[type]["properties"]
+					for field in mapping:
+						# Si le champ est de type geo_shape ou geo_point
+						if mapping[field]["type"] == "geo_point" or mapping[field]["type"] == "geo_shape":
+							# On mémorise ce champ
+							self.connector.addGeoField({"index": index, "type": type, "field": field, "geotype": mapping[field]["type"]})
+							# On affiche ce champ dans la liste
+							item = QStandardItem('- Index "' + index + '" / Type "' + type + '" / Champ "' + field + '" (' + mapping[field]["type"] + ')')
+							model.appendRow(item)
+			# Si au moins un champ a été trouvé
+			if model.rowCount() > 0:
+				# On met à jour le contenu de la liste
+				listView.setModel(model)
+				# On active le bouton "Ajouter"
+				self.dlg.addLayers.setEnabled(True)
+			else:
+				self.iface.messageBar().pushMessage("ElasticSearch Connector", 'Aucun champ "geo_shape" ou "geo_point" disponible' , level=QgsMessageBar.WARNING, duration=5)
+			# On se déconnecte de la base
+		except ESConnectorException, e:
+			self.iface.messageBar().pushMessage("ElasticSearch Connector", str(e), level=QgsMessageBar.CRITICAL, duration=5)
+
+	def onAddLayersClick(self):
+		try:
+			# On parcourt les champs géographiques recensés
+			for geoField in self.connector.getGeoFields():
+				index = geoField["index"]
+				type = geoField["type"]
+				field = geoField["field"]
+				geotype = geoField["geotype"]
+				# On préparer les tableaux
+				features = {"MultiPoint": [], "MultiLineString": [], "MultiPolygon": []}
+				# On parcourt les résultats
+				hits = self.connector.getHits(index, type)
+				if len(hits) > 0:
+					# Si on va récupérer des geo_point
+					if geotype == "geo_point":
+						for hit in hits:
+							try:
+								# On construit une feature et on l'ajoute au tableau
+								geoPoint = hit["_source"][field]
+								wkt = ""
+								if isinstance(geoPoint, str) or isinstance(geoPoint, unicode):
+									coordinates = geoPoint.split(",")
+									wkt = "POINT("+ coordinates[1] +" " + coordinates[0] + ")"
+								elif isinstance(geoPoint, dict):
+									wkt = "POINT("+ geoPoint["lon"] +" " + geoPoint["lat"] + ")"
+								elif isinstance(geoPoint, list):
+									wkt = "POINT("+ geoPoint[1] +" " + geoPoint[0] + ")"
+								feature = QgsFeature()
+								feature.setGeometry(QgsGeometry.fromWkt(wkt))
+								features["MultiPoint"].append(feature)
+							except KeyError:
+								pass
+					# Si on va récupérer des geo_shape
+					elif geotype == "geo_shape":
+						for hit in hits:
+							try:
+								# On construit une feature et on l'ajoute au tableau
+								geom = hit["_source"][field]
+								geometry = ogr.CreateGeometryFromJson(json.dumps(geom))
+								wkt = geometry.ExportToWkt()
+								feature = QgsFeature()
+								feature.setGeometry(QgsGeometry.fromWkt(wkt))
+								geomtype = geom["type"].lower()
+								if "point" in geomtype:
 									features["MultiPoint"].append(feature)
-								except KeyError:
-									pass
-						# Si on va récupérer des geo_shape
-						elif geotype == "geo_shape":
-							for hit in hits:
-								try:
-									# On construit une feature et on l'ajoute au tableau
-									geom = hit["_source"][field]
-									geometry = ogr.CreateGeometryFromJson(json.dumps(geom))
-									wkt = geometry.ExportToWkt()
-									feature = QgsFeature()
-									feature.setGeometry(QgsGeometry.fromWkt(wkt))
-									geomtype = geom["type"].lower()
-									if "point" in geomtype:
-										features["MultiPoint"].append(feature)
-									if "line" in geomtype:
-										features["MultiLineString"].append(feature)
-									if "polygon" in geomtype:
-										features["MultiPolygon"].append(feature)
-								except KeyError:
-									pass
-						# S'il y a au moins une géométrie exploitable qui a été récupérée dans ce champ
-						if len(features["MultiPoint"]) + len(features["MultiLineString"]) + len(features["MultiPolygon"]) > 0:
-							# On crée un groupe de couches
-							name = "[ES@" + connector.getUrl() + "] /" + index + "/" + type + "/" + field
-							group = QgsProject.instance().layerTreeRoot().addGroup(name)
-							# On crée les couches vectorielles et on les ajoute à la carte
-							for geomtype in features:
-								if len(features[geomtype]) > 0:
-									# On crée la couche vectorielle
-									layer = QgsVectorLayer(geomtype + "?crs=EPSG:4326", geomtype[5:] + "s", "memory")
-									provider = layer.dataProvider()
-									# On ajoute le tableau de features à la couche
-									provider.addFeatures(features[geomtype])
-									layer.updateExtents()
-									# On ajoute la couche au groupe
-									QgsMapLayerRegistry.instance().addMapLayer(layer, False)
-									group.addLayer(layer)
-				connector.close()
-				self.iface.messageBar().pushMessage(u"Opération réussie", u"La base ElasticSearch a été scannée", level=QgsMessageBar.INFO, duration=5)
-			except ESConnectorException, e:
-				self.iface.messageBar().pushMessage(u"Une erreur est survenue", str(e), level=QgsMessageBar.CRITICAL, duration=5)
+								if "line" in geomtype:
+									features["MultiLineString"].append(feature)
+								if "polygon" in geomtype:
+									features["MultiPolygon"].append(feature)
+							except KeyError:
+								pass
+					# S'il y a au moins une géométrie exploitable qui a été récupérée dans ce champ
+					if len(features["MultiPoint"]) + len(features["MultiLineString"]) + len(features["MultiPolygon"]) > 0:
+						# On crée un groupe de couches
+						name = "[@ " + self.connector.getUrl() + "] /" + index + "/" + type + "/" + field
+						group = QgsProject.instance().layerTreeRoot().addGroup(name)
+						# On crée les couches vectorielles et on les ajoute à la carte
+						for geomtype in features:
+							if len(features[geomtype]) > 0:
+								# On crée la couche vectorielle
+								layer = QgsVectorLayer(geomtype + "?crs=EPSG:4326", geomtype[5:] + "s", "memory")
+								provider = layer.dataProvider()
+								# On ajoute le tableau de features à la couche
+								provider.addFeatures(features[geomtype])
+								layer.updateExtents()
+								# On ajoute la couche au groupe
+								QgsMapLayerRegistry.instance().addMapLayer(layer, False)
+								group.addLayer(layer)
+			self.connector.clearGeoFields()
+			self.iface.messageBar().pushMessage("ElasticSearch Connector", u"Les couches ont été ajoutées", level=QgsMessageBar.INFO, duration=5)
+			# On ferme la popup
+			self.oncloseDlgClick()
+		except ESConnectorException, e:
+			self.iface.messageBar().pushMessage("ElasticSearch Connector", str(e), level=QgsMessageBar.CRITICAL, duration=5)
+
+	def oncloseDlgClick(self):
+		self.connector.close()
+		self.dlg.close()

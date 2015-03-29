@@ -19,7 +19,7 @@ class EsConnector(object):
 		try:
 			self.connection = httplib.HTTPConnection(self.address)
 		except Exception:
-			raise ESConnectorException(u"Impossible de se connecter à la base ElasticSearch")
+			raise ESConnectorException("Impossible de se connecter a la base")
 
 	def close(self):
 		self.connection.close()
@@ -36,11 +36,11 @@ class EsConnector(object):
 				try:
 					return json.loads(response.read())
 				except ValueError:
-					raise ESConnectorException("Impossible de décoder la réponse en tant qu'objet JSON")
+					return []
 			else:
-				raise ESConnectorException("Impossible de se connecter à la base ElasticSearch (HTTP " + response.status + ")")
+				raise ESConnectorException("Impossible de se connecter a la base (HTTP " + response.status + ")")
 		except Exception, e:
-			raise ESConnectorException("Impossible de se connecter à la base ElasticSearch")
+			raise ESConnectorException("Impossible de se connecter a la base")
 
 	def getHits(self, index, type):
 		results = self.makeGetCallToES(index + "/" + type + "/_search")
@@ -54,3 +54,6 @@ class EsConnector(object):
 
 	def addGeoField(self, geoField):
 		self.geoFields.append(geoField)
+
+	def clearGeoFields(self):
+		self.geoFields = []
