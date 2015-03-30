@@ -1,7 +1,8 @@
 [general]
 name=ElasticSearch Connector
 qgisMinimumVersion=2.0
-description=Ce plugin permet d'afficher les géométries stockées dans une base ElasticSearch
+description=This QGIS plugin lets you display the features that are stored in an ElasticSearch database
+about=This QGIS plugin lets you connect to an ElasticSearch database (giving a server and a port), list all the geo_shape/geo_point fields found in the indices of the database and creates one group of layers per geo_* field
 version=0.2
 author=Adrien VAN HAMME
 email=esconnector@adrienvh.fr
